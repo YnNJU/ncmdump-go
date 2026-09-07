@@ -2,17 +2,27 @@ package main
 
 import (
 	"fmt"
-	"git.taurusxin.com/taurusxin/ncmdump-go/ncmcrypt"
-	"git.taurusxin.com/taurusxin/ncmdump-go/utils"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"git.taurusxin.com/taurusxin/ncmdump-go/ncmcrypt"
+	"git.taurusxin.com/taurusxin/ncmdump-go/utils"
 
 	flag "github.com/spf13/pflag"
 )
 
+// version is replaced by build.sh for release builds.
+var version = "1.7.5"
+
+func isNCMFile(filePath string) bool {
+	baseName := filepath.Base(filePath)
+	return !strings.HasPrefix(baseName, "._") && strings.EqualFold(filepath.Ext(baseName), ".ncm")
+}
+
 func processFile(filePath string, outputDir string) error {
 	// skip if the extension is not .ncm
-	if filePath[len(filePath)-4:] != ".ncm" {
+	if !isNCMFile(filePath) {
 		return nil
 	}
 
@@ -59,7 +69,7 @@ func main() {
 	}
 
 	if *showVersion {
-		fmt.Println("ncmdump version 1.7.5")
+		fmt.Printf("ncmdump version %s\n", version)
 		os.Exit(0)
 	}
 
@@ -132,7 +142,7 @@ func main() {
 		// process files from args
 		for _, filePath := range flag.Args() {
 			// skip if the extension is not .ncm
-			if filePath[len(filePath)-4:] != ".ncm" {
+			if !isNCMFile(filePath) {
 				continue
 			}
 			if outputDirSpecified {

@@ -1,37 +1,63 @@
 #!/usr/bin/env bash
 
-VERSION=1.7.5
+set -euo pipefail
 
-# Clean up the build directory
-rm -rf build
-mkdir build
+VERSION="${VERSION:-1.7.5}"
+VERSION="${VERSION#v}"
+BUILD_DIR="${BUILD_DIR:-build}"
+PACKAGE="git.taurusxin.com/taurusxin/ncmdump-go"
+LDFLAGS="-w -s -X main.version=${VERSION}"
 
-# Linux amd64
-echo "Building for Linux amd64..."
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/ncmdump-go git.taurusxin.com/taurusxin/ncmdump-go
-tar zcf build/ncmdump-go_linux_amd64_$VERSION.tar.gz -C build ncmdump-go
-rm build/ncmdump-go
+mkdir -p "${BUILD_DIR}"
+rm -f \
+    "${BUILD_DIR}/ncmdump-go" \
+    "${BUILD_DIR}/ncmdump-go.exe" \
+    "${BUILD_DIR}/ncmdump-go_linux_amd64_${VERSION}.tar.gz" \
+    "${BUILD_DIR}/ncmdump-go_linux_arm64_${VERSION}.tar.gz" \
+    "${BUILD_DIR}/ncmdump-go_darwin_amd64_${VERSION}.tar.gz" \
+    "${BUILD_DIR}/ncmdump-go_darwin_arm64_${VERSION}.tar.gz" \
+    "${BUILD_DIR}/ncmdump-go_windows_amd64_${VERSION}.zip"
 
-# Linux arm64
-echo "Building for Linux arm64..."
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o build/ncmdump-go git.taurusxin.com/taurusxin/ncmdump-go
-tar zcf build/ncmdump-go_linux_arm64_$VERSION.tar.gz -C build ncmdump-go
-rm build/ncmdump-go
+create_tar_archive() {
+    local os="$1"
+    local arch="$2"
+    local binary="${BUILD_DIR}/ncmdump-go"
+    local archive="${BUILD_DIR}/ncmdump-go_${os}_${arch}_${VERSION}.tar.gz"
+    local tar_version
 
-# macOS amd64
-echo "Building for macOS amd64..."
-CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o build/ncmdump-go git.taurusxin.com/taurusxin/ncmdump-go
-tar zcf build/ncmdump-go_darwin_amd64_$VERSION.tar.gz -C build ncmdump-go
-rm build/ncmdump-go
+    echo "Building for ${os} ${arch}..."
+    CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
+        go build -trimpath -ldflags="${LDFLAGS}" -o "${binary}" "${PACKAGE}"
 
-# macOS arm64
-echo "Building for macOS arm64..."
-CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -o build/ncmdump-go git.taurusxin.com/taurusxin/ncmdump-go
-tar zcf build/ncmdump-go_darwin_arm64_$VERSION.tar.gz -C build ncmdump-go
-rm build/ncmdump-go
+    # Builds are sometimes produced from Git Bash on Windows, where chmod does
+    # not change NTFS permissions. Force the executable bit into GNU tar's
+    # header so macOS/Linux users can run the extracted binary immediately.
+    chmod 0755 "${binary}"
+    tar_version="$(tar --version 2>/dev/null || true)"
+    if [[ "${tar_version}" == *"GNU tar"* ]]; then
+        tar --mode=0755 -zcf "${archive}" -C "${BUILD_DIR}" ncmdump-go
+    else
+        tar -zcf "${archive}" -C "${BUILD_DIR}" ncmdump-go
+    fi
+
+    if ! tar -tvzf "${archive}" | awk 'NR == 1 { exit(substr($1, 1, 10) == "-rwxr-xr-x" ? 0 : 1) }'; then
+        echo "Archive validation failed: ncmdump-go is not executable in ${archive}" >&2
+        exit 1
+    fi
+
+    rm "${binary}"
+}
+
+create_tar_archive linux amd64
+create_tar_archive linux arm64
+create_tar_archive darwin amd64
+create_tar_archive darwin arm64
 
 # Windows amd64
 echo "Building for Windows amd64..."
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o build/ncmdump-go.exe git.taurusxin.com/taurusxin/ncmdump-go
-zip -q -j build/ncmdump-go_windows_amd64_$VERSION.zip ./build/ncmdump-go.exe
-rm build/ncmdump-go.exe
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+    go build -trimpath -ldflags="${LDFLAGS}" -o "${BUILD_DIR}/ncmdump-go.exe" "${PACKAGE}"
+zip -q -j "${BUILD_DIR}/ncmdump-go_windows_amd64_${VERSION}.zip" "${BUILD_DIR}/ncmdump-go.exe"
+rm "${BUILD_DIR}/ncmdump-go.exe"
+
+echo "Release archives written to ${BUILD_DIR}/"

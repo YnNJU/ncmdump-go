@@ -12,14 +12,41 @@
 
 ## 安装
 
-你可以使用去 [releases](https://git.taurusxin.com/taurusxin/ncmdump-go/releases/latest) 下载最新版预编译好的二进制文件，或者你也可以用包管理器来安装
+你可以前往 [releases](https://git.taurusxin.com/taurusxin/ncmdump-go/releases/latest) 下载最新版预编译好的二进制文件，或者使用包管理器安装。
+
+### macOS
+
+项目同时支持 Apple Silicon（M1/M2/M3/M4 等）和 Intel Mac：
+
+- Apple Silicon 下载文件名包含 `darwin_arm64` 的压缩包；
+- Intel Mac 下载文件名包含 `darwin_amd64` 的压缩包；
+- 不确定芯片架构时，可运行 `uname -m`：输出 `arm64` 对应 Apple Silicon，输出 `x86_64` 对应 Intel。
+
+下载并解压后，在终端执行：
+
+```shell
+chmod +x ncmdump-go
+sudo install -d /usr/local/bin
+sudo install -m 0755 ncmdump-go /usr/local/bin/ncmdump-go
+ncmdump-go --version
+```
+
+新发布的 macOS 压缩包已经包含可执行权限；这里保留 `chmod`，以兼容早期发布包。如果 macOS 提示无法验证开发者，可在确认文件来自本项目发布页后、执行安装命令前移除下载隔离属性：
+
+```shell
+xattr -d com.apple.quarantine ncmdump-go
+```
+
+也可以安装 Go 1.23 或更高版本后从源码构建：
+
+```shell
+go build -o ncmdump-go .
+```
 
 ```shell
 # Windows Scoop
 scoop bucket add taurusxin https://git.taurusxin.com/taurusxin/scoop-bucket.git  # 添加 scoop 源
 scoop install ncmdump-go # 安装 ncmdump-go
-
-# macOS & Linux 之后会支持
 ```
 
 ## 使用方法
@@ -69,10 +96,10 @@ ncmdump-go -d source_dir -o output_dir -r
 
 ## 开发
 
-使用 go module 下载 ncmdump-go 包
+使用 Go module 下载 ncmdump-go 包
 
 ```shell
-go get -u git.taurusxin.com/taurusxin/ncmdump-go
+go get git.taurusxin.com/taurusxin/ncmdump-go@latest
 ```
 
 导入并使用
@@ -111,4 +138,3 @@ func main() {
 	}
 }
 ```
-
