@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"git.taurusxin.com/taurusxin/ncmdump-go/utils"
 	"github.com/bogem/id3v2/v2"
@@ -161,10 +162,17 @@ func (ncm *NeteaseCloudMusic) Dump(targetDir string) (bool, error) {
 }
 
 // FixMetadata will fix the missing metadata for target music file, the source of the metadata comes from origin ncm file.
-// Since NeteaseCloudMusic version 3.0, the album cover image is no longer embedded in the ncm file. If the parameter is true, it means downloading the image from the NetEase server and embedding it into the target music file (network connection required)
-func (ncm *NeteaseCloudMusic) FixMetadata(fetchAlbumImageFromRemote bool) (bool, error) {
+// Since NeteaseCloudMusic version 3.0, some metadata is no longer embedded in the ncm file. If the parameter is true, missing metadata such as the album cover and track number will be fetched from the NetEase server (network connection required).
+func (ncm *NeteaseCloudMusic) FixMetadata(fetchMetadataFromRemote bool) (bool, error) {
+	var trackNumber int64
+	if ncm.mMetadata != nil && fetchMetadataFromRemote {
+		// Track numbers are not included in NCM metadata. Fetching them is
+		// best-effort and must not prevent a successful conversion.
+		trackNumber, _ = fetchTrackNumber(ncm.mMetadata.mAlbumID, ncm.mMetadata.mMusicID)
+	}
+
 	// only fetch album image from remote when it's not embedded in the ncm file
-	if len(ncm.mImageData) <= 0 && fetchAlbumImageFromRemote {
+	if len(ncm.mImageData) <= 0 && fetchMetadataFromRemote {
 		// get the album pic from url
 		resp, err := http.Get(ncm.mAlbumPicUrl)
 		if err != nil {
@@ -191,6 +199,9 @@ func (ncm *NeteaseCloudMusic) FixMetadata(fetchAlbumImageFromRemote bool) (bool,
 		audioFile.SetTitle(ncm.mMetadata.mName)
 		audioFile.SetArtist(ncm.mMetadata.mArtist)
 		audioFile.SetAlbum(ncm.mMetadata.mAlbum)
+		if trackNumber > 0 {
+			audioFile.AddTextFrame("TRCK", id3v2.EncodingUTF8, strconv.FormatInt(trackNumber, 10))
+		}
 
 		if len(ncm.mImageData) > 0 {
 			pic := id3v2.PictureFrame{
@@ -246,6 +257,11 @@ func (ncm *NeteaseCloudMusic) FixMetadata(fetchAlbumImageFromRemote bool) (bool,
 		}
 		if res, _ := cmts.Get(flacvorbis.FIELD_ALBUM); len(res) == 0 {
 			_ = cmts.Add(flacvorbis.FIELD_ALBUM, ncm.mMetadata.mAlbum)
+		}
+		if trackNumber > 0 {
+			if res, _ := cmts.Get("TRACKNUMBER"); len(res) == 0 {
+				_ = cmts.Add("TRACKNUMBER", strconv.FormatInt(trackNumber, 10))
+			}
 		}
 
 		cmtsmeta := cmts.Marshal()

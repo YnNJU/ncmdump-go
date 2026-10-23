@@ -2,7 +2,7 @@
 
 基于 https://github.com/taurusxin/ncmdump 的 Golang 移植版
 
-支持网易云音乐最新的 3.x 版本，但需要注意：从 3. x开始的某些网易云音乐版本不再在 ncm 文件中内置封面图片，本项目支持从网易服务器上自动下载对应歌曲的封面图并写入到最终的音乐文件中
+支持网易云音乐最新的 3.x 版本，但需要注意：从 3. x开始的某些网易云音乐版本不再在 ncm 文件中内置封面图片，本项目支持从网易服务器上自动下载对应歌曲的封面图和专辑曲序，并写入到最终的音乐文件中
 
 你也可以去 https://git.taurusxin.com/taurusxin/ncmdump-gui 下载基于本项目的 gui 可视化图形应用，只需简单点击即可自动转换。
 
@@ -102,7 +102,7 @@ func main() {
 	}
 	if dumpResult {
 		// 使用源文件的元数据修补转换后的音乐文件
-		// 注意：自网易云音乐 3.0 版本开始，ncm 文件中不再内嵌专辑封面图片，参数若为 true 则表示从网易服务器上下载图片并嵌入到目标音乐文件（需要联网）
+		// 注意：参数若为 true，则表示从网易服务器获取缺失的封面图片和专辑曲序并写入目标音乐文件（需要联网）
 		metadata, err := ncm.FixMetadata(true)
 		if !metadata {
 			fmt.Printf("Fix metadata for '%s' failed: '%s'", filePath, err.Error())

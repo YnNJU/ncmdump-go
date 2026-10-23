@@ -6,8 +6,10 @@ import (
 
 type NeteaseClousMusicMetadata struct {
 	mAlbum    string
+	mAlbumID  int64
 	mArtist   string
 	mFormat   string
+	mMusicID  int64
 	mName     string
 	mDuration int64
 	mBitrate  int64
@@ -29,6 +31,8 @@ func NewNeteaseCloudMusicMetadata(meta string) *NeteaseClousMusicMetadata {
 
 	metaData.mName = gjson.Get(meta, "musicName").String()
 	metaData.mAlbum = gjson.Get(meta, "album").String()
+	metaData.mAlbumID = gjson.Get(meta, "albumId").Int()
+	metaData.mMusicID = gjson.Get(meta, "musicId").Int()
 
 	artists := gjson.Get(meta, "artist").Array()
 	if len(artists) > 0 {
